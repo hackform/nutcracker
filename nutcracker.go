@@ -4,15 +4,6 @@ import (
 	"errors"
 )
 
-const (
-	tokenSpace = iota
-	tokenText
-	tokenStartDouble
-	tokenEndDouble
-	tokenStartSingle
-	tokenEndSingle
-)
-
 var (
 	errUnclosedStrI  = errors.New("unclosed double quote")
 	errUnclosedStrL  = errors.New("unclosed single quote")

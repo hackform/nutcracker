@@ -58,21 +58,15 @@ func Test_unquoteStrI(t *testing.T) {
 		assert.Equal("hello\\ world$\"\\ ", s, "unquote should only be removed if before a special char")
 	}
 	{
-		arg := "hello world\\` "
-		s, err := unquoteStrI(arg)
-		assert.NoError(err, "unquote should not error")
-		assert.Equal("hello world` ", s, "unquote should only be removed if before a special char")
-	}
-	{
 		arg := `hello world\`
 		_, err := unquoteStrI(arg)
 		assert.Equal(errInvalidEscape, err, "unquote should error on invalid escapes")
 	}
 	{
 		arg := `hello\
- world\ `
+world\ `
 		s, err := unquoteStrI(arg)
 		assert.NoError(err, "unquote should not error")
-		assert.Equal("hello world\\ ", s, "string should have newline removed")
+		assert.Equal("helloworld\\ ", s, "string should have newline removed")
 	}
 }

@@ -56,36 +56,56 @@ func parseArg(text string) (*nodeArg, string, error) {
 				return nil, "", errInvalidEscape
 			}
 			i += 2
-		} else if isSpace(ch) {
+		} else if isSpace(ch) || ch == '"' || ch == '\'' {
 			if i > 0 {
-				nodes = append(nodes, newNodeText(text[0:i]))
-				text = text[i:]
+				n, next, err := parseArgText(text, i)
+				if err != nil {
+					return nil, "", err
+				}
+				nodes = append(nodes, n)
+				text = next
+				i = 0
 			}
-			text = trimLSpace(text)
-			i = 0
-			break
-		} else if ch == '"' {
-			if i > 0 {
-				nodes = append(nodes, newNodeText(text[0:i]))
-				text = text[i:]
+			if isSpace(ch) {
+				text = trimLSpace(text)
+				break
+			} else if ch == '"' {
+				n, next, err := parseStrI(text)
+				if err != nil {
+					return nil, "", err
+				}
+				nodes = append(nodes, n)
+				text = next
+			} else if ch == '\'' {
+				n, next, err := parseStrL(text)
+				if err != nil {
+					return nil, "", err
+				}
+				nodes = append(nodes, n)
+				text = next
 			}
-			n, next, err := parseDoubleQuote(text)
-			if err != nil {
-				return nil, "", err
-			}
-			nodes = append(nodes, n)
-			text = next
-			i = 0
 		} else {
 			i++
 		}
 	}
 	if i > 0 {
-		nodes = append(nodes, newNodeText(text[0:i]))
-		text = text[i:]
+		n, next, err := parseArgText(text, i)
+		if err != nil {
+			return nil, "", err
+		}
+		nodes = append(nodes, n)
+		text = next
 		i = 0
 	}
 	return newNodeArg(nodes), text, nil
+}
+
+func parseArgText(text string, i int) (*nodeText, string, error) {
+	k, err := unquoteArg(text[0:i])
+	if err != nil {
+		return nil, "", err
+	}
+	return newNodeText(k), text[i:], nil
 }
 
 type (
@@ -108,10 +128,10 @@ func (n nodeStrI) Value() string {
 	return s.String()
 }
 
-func parseDoubleQuote(text string) (*nodeStrI, string, error) {
+func parseStrI(text string) (*nodeStrI, string, error) {
 	nodes := []Node{}
-	i := 1
-	found := false
+	text = text[1:]
+	i := 0
 	for i < len(text) {
 		ch := text[i]
 		if ch == '\\' {
@@ -120,25 +140,51 @@ func parseDoubleQuote(text string) (*nodeStrI, string, error) {
 			}
 			i += 2
 		} else if ch == '"' {
-			found = true
-			if i > 1 {
-				s, err := unquoteStrI(text[1:i])
+			if i > 0 {
+				s, err := unquoteStrI(text[0:i])
 				if err != nil {
 					return nil, "", err
 				}
-				nodes = append(nodes, nodeText{
-					text: s,
-				})
+				nodes = append(nodes, newNodeText(s))
 			}
 			text = text[i+1:]
 			i = 0
-			break
+			return newNodeStrI(nodes), text, nil
 		} else {
 			i++
 		}
 	}
-	if !found {
-		return nil, "", errUnclosedStrI
+	return nil, "", errUnclosedStrI
+}
+
+type (
+	nodeStrL struct {
+		text string
 	}
-	return newNodeStrI(nodes), text, nil
+)
+
+func newNodeStrL(s string) *nodeStrL {
+	return &nodeStrL{
+		text: s,
+	}
+}
+
+func (n nodeStrL) Value() string {
+	return n.text
+}
+
+func parseStrL(text string) (*nodeStrL, string, error) {
+	text = text[1:]
+	i := 0
+	for i < len(text) {
+		ch := text[i]
+		if ch == '\'' {
+			k := text[0:i]
+			text = text[i+1:]
+			return newNodeStrL(k), text, nil
+		} else {
+			i++
+		}
+	}
+	return nil, "", errUnclosedStrL
 }

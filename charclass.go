@@ -23,7 +23,7 @@ func trimLSpace(s string) string {
 
 func isSpecialStrI(c byte) bool {
 	switch c {
-	case '$', '`', '"', '\\', '\n':
+	case '$', '"', '\\', '\n':
 		return true
 	default:
 		return false
