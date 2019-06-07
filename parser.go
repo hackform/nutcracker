@@ -10,6 +10,7 @@ const (
 	argModeNorm = iota
 	argModeCmd
 	argModeSub
+	argModeVar
 )
 
 type (
@@ -72,7 +73,7 @@ func (n nodeArg) Value(env Env) (string, error) {
 // takes in a string not beginning with whitespace
 func parseArg(text string, mode int) (*nodeArg, string, error) {
 	switch mode {
-	case argModeNorm, argModeCmd, argModeSub:
+	case argModeNorm, argModeCmd, argModeSub, argModeVar:
 	default:
 		return nil, "", ErrInvalidArgMode
 	}
@@ -86,7 +87,7 @@ func parseArg(text string, mode int) (*nodeArg, string, error) {
 				return nil, "", ErrInvalidEscape
 			}
 			i += 2
-		} else if isSpace(ch) || ch == ')' || ch == '}' || ch == '"' || ch == '\'' {
+		} else if isSpace(ch) || ch == ')' || ch == '}' || ch == '"' || ch == '\'' || ch == '$' {
 			if i > 0 {
 				n, next, err := parseArgText(text, i)
 				if err != nil {
@@ -96,11 +97,15 @@ func parseArg(text string, mode int) (*nodeArg, string, error) {
 				text = next
 				i = 0
 			}
-			if ch == ')' || ch == '}' {
-				if mode == argModeNorm {
-					if ch == ')' {
-						return nil, "", ErrInvalidCloseParen
-					}
+			if ch == ')' {
+				switch mode {
+				case argModeNorm, argModeVar:
+					return nil, "", ErrInvalidCloseParen
+				}
+				break
+			} else if ch == '}' {
+				switch mode {
+				case argModeNorm, argModeCmd, argModeSub:
 					return nil, "", ErrInvalidCloseBrace
 				}
 				break
@@ -116,6 +121,13 @@ func parseArg(text string, mode int) (*nodeArg, string, error) {
 				text = next
 			} else if ch == '\'' {
 				n, next, err := parseStrL(text)
+				if err != nil {
+					return nil, "", err
+				}
+				nodes = append(nodes, n)
+				text = next
+			} else if ch == '$' {
+				n, next, err := parseVar(text)
 				if err != nil {
 					return nil, "", err
 				}
@@ -186,17 +198,27 @@ func parseStrI(text string) (*nodeStrI, string, error) {
 				return nil, "", ErrInvalidEscape
 			}
 			i += 2
-		} else if ch == '"' {
+		} else if ch == '"' || ch == '$' {
 			if i > 0 {
 				s, err := unquoteStrI(text[0:i])
 				if err != nil {
 					return nil, "", err
 				}
 				nodes = append(nodes, newNodeText(s))
+				text = text[i:]
+				i = 0
 			}
-			text = text[i+1:]
-			i = 0
-			return newNodeStrI(nodes), text, nil
+			if ch == '"' {
+				text = text[1:]
+				return newNodeStrI(nodes), text, nil
+			} else if ch == '$' {
+				n, next, err := parseVar(text)
+				if err != nil {
+					return nil, "", err
+				}
+				nodes = append(nodes, n)
+				text = next
+			}
 		} else {
 			i++
 		}
@@ -253,18 +275,26 @@ func newNodeEnvVar(name string, defval []Node) *nodeEnvVar {
 }
 
 func (n nodeEnvVar) Value(env Env) (string, error) {
-	k := env.Envfunc(n.name)
-	if len(k) > 0 {
-		return k, nil
+	if env.Envfunc != nil {
+		k := env.Envfunc(n.name)
+		if len(k) > 0 {
+			return k, nil
+		}
 	}
 	if n.defval == nil {
 		return "", nil
 	}
 	s := strings.Builder{}
+	first := true
 	for _, i := range n.defval {
 		v, err := i.Value(env)
 		if err != nil {
 			return "", err
+		}
+		if first {
+			first = false
+		} else {
+			s.WriteByte(' ')
 		}
 		s.WriteString(v)
 	}
@@ -299,7 +329,7 @@ func parseVarLong(text string) (Node, string, error) {
 	text = text[2:]
 	k := parseTopEnvVar(text)
 	name := text[0:k]
-	text = trimLSpace(text[k:])
+	text = text[k:]
 	if len(text) < 1 {
 		return nil, "", ErrUnclosedBrace
 	}
@@ -312,14 +342,19 @@ func parseVarLong(text string) (Node, string, error) {
 	}
 
 	nodes := []Node{}
-	text = text[2:]
+	text = trimLSpace(text[2:])
 	for len(text) > 0 {
 		ch := text[0]
 		if ch == '}' {
 			text = text[1:]
 			return newNodeEnvVar(name, nodes), text, nil
 		}
-		// TODO parse args
+		n, next, err := parseArg(text, argModeVar)
+		if err != nil {
+			return nil, "", err
+		}
+		nodes = append(nodes, n)
+		text = next
 	}
 	return nil, "", ErrUnclosedBrace
 }
