@@ -68,6 +68,8 @@ func (n nodeArg) Value(env Env) (string, error) {
 	return s.String(), nil
 }
 
+// parseArg parses one argument in the current mode
+// takes in a string not beginning with whitespace
 func parseArg(text string, mode int) (*nodeArg, string, error) {
 	switch mode {
 	case argModeNorm, argModeCmd, argModeSub:
@@ -84,7 +86,7 @@ func parseArg(text string, mode int) (*nodeArg, string, error) {
 				return nil, "", ErrInvalidEscape
 			}
 			i += 2
-		} else if isSpace(ch) || ch == ')' || ch == '"' || ch == '\'' {
+		} else if isSpace(ch) || ch == ')' || ch == '}' || ch == '"' || ch == '\'' {
 			if i > 0 {
 				n, next, err := parseArgText(text, i)
 				if err != nil {
@@ -94,9 +96,12 @@ func parseArg(text string, mode int) (*nodeArg, string, error) {
 				text = next
 				i = 0
 			}
-			if ch == ')' {
+			if ch == ')' || ch == '}' {
 				if mode == argModeNorm {
-					return nil, "", ErrInvalidCloseParen
+					if ch == ')' {
+						return nil, "", ErrInvalidCloseParen
+					}
+					return nil, "", ErrInvalidCloseBrace
 				}
 				break
 			} else if isSpace(ch) {
@@ -135,6 +140,7 @@ func parseArg(text string, mode int) (*nodeArg, string, error) {
 	return newNodeArg(nodes), text, nil
 }
 
+// parseArgText consumes the first i bytes to create a text node
 func parseArgText(text string, i int) (*nodeText, string, error) {
 	k, err := unquoteArg(text[0:i])
 	if err != nil {
@@ -167,6 +173,8 @@ func (n nodeStrI) Value(env Env) (string, error) {
 	return s.String(), nil
 }
 
+// parseStrI parses interpolated strings.
+// takes in a string beginning with '"'
 func parseStrI(text string) (*nodeStrI, string, error) {
 	nodes := []Node{}
 	text = text[1:]
@@ -212,6 +220,8 @@ func (n nodeStrL) Value(env Env) (string, error) {
 	return n.text, nil
 }
 
+// parseStrL parses literal strings.
+// takes in a string beginning with '\''
 func parseStrL(text string) (*nodeStrL, string, error) {
 	text = text[1:]
 	i := 0
@@ -231,11 +241,11 @@ func parseStrL(text string) (*nodeStrL, string, error) {
 type (
 	nodeEnvVar struct {
 		name   string
-		defval string
+		defval []Node
 	}
 )
 
-func newNodeEnvVar(name, defval string) *nodeEnvVar {
+func newNodeEnvVar(name string, defval []Node) *nodeEnvVar {
 	return &nodeEnvVar{
 		name:   name,
 		defval: defval,
@@ -244,10 +254,74 @@ func newNodeEnvVar(name, defval string) *nodeEnvVar {
 
 func (n nodeEnvVar) Value(env Env) (string, error) {
 	k := env.Envfunc(n.name)
-	if len(k) == 0 {
-		return n.defval, nil
+	if len(k) > 0 {
+		return k, nil
 	}
-	return k, nil
+	if n.defval == nil {
+		return "", nil
+	}
+	s := strings.Builder{}
+	for _, i := range n.defval {
+		v, err := i.Value(env)
+		if err != nil {
+			return "", err
+		}
+		s.WriteString(v)
+	}
+	return s.String(), nil
+}
+
+// parseVar parses env vars and command substitutions.
+// takes in a string beginning with '$'
+func parseVar(text string) (Node, string, error) {
+	if len(text) < 2 {
+		return nil, "", ErrInvalidVar
+	}
+	k := parseTopEnvVar(text[1:])
+	if k > 0 {
+		text = text[1:]
+		name := text[0:k]
+		text = text[k:]
+		return newNodeEnvVar(name, nil), text, nil
+	}
+	ch := text[1]
+	if ch == '{' {
+		return parseVarLong(text)
+	} else if ch == '(' {
+		return parseCmd(text)
+	}
+	return nil, "", ErrInvalidVar
+}
+
+// parseVarLong parses long long env vars.
+// takes in a string beginning with '${'
+func parseVarLong(text string) (Node, string, error) {
+	text = text[2:]
+	k := parseTopEnvVar(text)
+	name := text[0:k]
+	text = trimLSpace(text[k:])
+	if len(text) < 1 {
+		return nil, "", ErrUnclosedBrace
+	}
+	if text[0] == '}' {
+		text = text[1:]
+		return newNodeEnvVar(name, nil), text, nil
+	}
+	if len(text) < 2 || text[0:2] != ":-" {
+		return nil, "", ErrInvalidVar
+	}
+
+	nodes := []Node{}
+	text = text[2:]
+	for len(text) > 0 {
+		ch := text[0]
+		if ch == '}' {
+			text = text[1:]
+			return newNodeEnvVar(name, nodes), text, nil
+		}
+		// TODO parse args
+	}
+	return nil, "", ErrUnclosedBrace
 }
 
 type (
@@ -263,6 +337,9 @@ func newNodeCmd(nodes []Node) *nodeCmd {
 }
 
 func (n nodeCmd) Value(env Env) (string, error) {
+	if len(n.nodes) == 0 {
+		return "", nil
+	}
 	k := make([]string, 0, len(n.nodes))
 	for _, i := range n.nodes {
 		v, err := i.Value(env)
@@ -281,4 +358,10 @@ func (n nodeCmd) Value(env Env) (string, error) {
 		return "", err
 	}
 	return b.String(), nil
+}
+
+// parseCmd parses a command substitution.
+// takes in a string beginning with '$('
+func parseCmd(text string) (Node, string, error) {
+	return nil, "", ErrUnclosedParen
 }

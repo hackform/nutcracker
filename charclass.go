@@ -1,6 +1,7 @@
 package nutcracker
 
 import (
+	"regexp"
 	"strings"
 )
 
@@ -83,4 +84,12 @@ func unquoteStrI(text string) (string, error) {
 		text = text[1:]
 	}
 	return s.String(), nil
+}
+
+var (
+	regexFindEnv = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*")
+)
+
+func parseTopEnvVar(s string) int {
+	return len(regexFindEnv.FindString(s))
 }

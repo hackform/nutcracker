@@ -101,6 +101,11 @@ func Test_parseArg(t *testing.T) {
 		assert.Equal(ErrInvalidCloseParen, err, "parse arg should error on invalid mode")
 	}
 	{
+		arg := `hello} world`
+		_, _, err := parseArg(arg, argModeNorm)
+		assert.Equal(ErrInvalidCloseBrace, err, "parse arg should error on invalid mode")
+	}
+	{
 		arg := `'hello\$ world\`
 		_, _, err := parseArg(arg, argModeNorm)
 		assert.Equal(ErrUnclosedStrL, err, "parse arg should error on unclosed literal string")
