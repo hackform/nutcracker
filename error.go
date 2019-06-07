@@ -1,12 +1,12 @@
 package nutcracker
 
 type (
-	Error int
+	internalError int
 )
 
 const (
 	_               = iota
-	ErrUnclosedStrI = Error(iota)
+	ErrUnclosedStrI = internalError(iota)
 	ErrUnclosedStrL
 	ErrUnclosedParen
 	ErrInvalidEscape
@@ -15,7 +15,7 @@ const (
 	ErrInvalidExec
 )
 
-func (e Error) Error() string {
+func (e internalError) Error() string {
 	switch e {
 	case ErrUnclosedStrI:
 		return "unclosed double quote"
