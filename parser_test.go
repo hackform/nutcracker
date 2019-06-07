@@ -10,7 +10,7 @@ func Test_parseArg(t *testing.T) {
 
 	{
 		arg := `hello world `
-		n, next, err := parseArg(arg)
+		n, next, err := parseArg(arg, argModeNorm)
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("world ", next, "only the first argument should be parsed")
 		assert.Equal(newNodeArg([]Node{newNodeText("hello")}), n, "only the first argument should be parsed")
@@ -20,7 +20,7 @@ func Test_parseArg(t *testing.T) {
 	{
 		arg := `hello\ world\
 ! kevin `
-		n, next, err := parseArg(arg)
+		n, next, err := parseArg(arg, argModeNorm)
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("kevin ", next, "escape will escape spaces and eliminate newline")
 		assert.Equal(newNodeArg([]Node{newNodeText("hello world!")}), n, "escape will escape spaces and eliminate newline")
@@ -29,7 +29,7 @@ func Test_parseArg(t *testing.T) {
 	}
 	{
 		arg := `hello\ world`
-		n, next, err := parseArg(arg)
+		n, next, err := parseArg(arg, argModeNorm)
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("", next, "escape will escape spaces")
 		assert.Equal(newNodeArg([]Node{newNodeText("hello world")}), n, "escape will escape spaces")
@@ -38,7 +38,7 @@ func Test_parseArg(t *testing.T) {
 	}
 	{
 		arg := `"hello\ 'world"`
-		n, next, err := parseArg(arg)
+		n, next, err := parseArg(arg, argModeNorm)
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("", next, "interpolated string will include spaces and single quotes")
 		assert.Equal(newNodeArg([]Node{newNodeStrI([]Node{newNodeText("hello\\ 'world")})}), n, "interpolated string will include spaces and single quotes")
@@ -48,7 +48,7 @@ func Test_parseArg(t *testing.T) {
 	{
 		arg := `"hello\
 'world" kevin `
-		n, next, err := parseArg(arg)
+		n, next, err := parseArg(arg, argModeNorm)
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("kevin ", next, "interpolated string will eliminate escaped newline")
 		assert.Equal(newNodeArg([]Node{newNodeStrI([]Node{newNodeText("hello'world")})}), n, "interpolated string will eliminate escaped newline")
@@ -57,7 +57,7 @@ func Test_parseArg(t *testing.T) {
 	}
 	{
 		arg := `"hello\$ world"\$ kevin `
-		n, next, err := parseArg(arg)
+		n, next, err := parseArg(arg, argModeNorm)
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("kevin ", next, "parse arg will include adjacent nodes")
 		assert.Equal(newNodeArg([]Node{newNodeStrI([]Node{newNodeText("hello$ world")}), newNodeText("$")}), n, "parse arg will include adjacent nodes")
@@ -66,7 +66,7 @@ func Test_parseArg(t *testing.T) {
 	}
 	{
 		arg := `'hello\$ world'\$ kevin `
-		n, next, err := parseArg(arg)
+		n, next, err := parseArg(arg, argModeNorm)
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("kevin ", next, "text in literal quote remains unchanged")
 		assert.Equal(newNodeArg([]Node{newNodeStrL("hello\\$ world"), newNodeText("$")}), n, "text in literal quote remains unchanged")
@@ -75,23 +75,23 @@ func Test_parseArg(t *testing.T) {
 	}
 	{
 		arg := `hello\ world\`
-		_, _, err := parseArg(arg)
-		assert.Equal(errInvalidEscape, err, "parse arg should error on invalid escape")
+		_, _, err := parseArg(arg, argModeNorm)
+		assert.Equal(ErrInvalidEscape, err, "parse arg should error on invalid escape")
 	}
 	{
 		arg := `"hello\$ world\`
-		_, _, err := parseArg(arg)
-		assert.Equal(errInvalidEscape, err, "parse arg should error on invalid escape")
+		_, _, err := parseArg(arg, argModeNorm)
+		assert.Equal(ErrInvalidEscape, err, "parse arg should error on invalid escape")
 	}
 	{
 		arg := `'hello\$ world\`
-		_, _, err := parseArg(arg)
-		assert.Equal(errUnclosedStrL, err, "parse arg should error on unclosed literal string")
+		_, _, err := parseArg(arg, argModeNorm)
+		assert.Equal(ErrUnclosedStrL, err, "parse arg should error on unclosed literal string")
 	}
 	{
 		arg := `"hello\$ world`
-		_, _, err := parseArg(arg)
-		assert.Equal(errUnclosedStrI, err, "parse arg should error on unclosed interpolated string")
+		_, _, err := parseArg(arg, argModeNorm)
+		assert.Equal(ErrUnclosedStrI, err, "parse arg should error on unclosed interpolated string")
 	}
 }
 
@@ -101,6 +101,6 @@ func Test_parseArgText(t *testing.T) {
 	{
 		arg := `hello \`
 		_, _, err := parseArgText(arg, len(arg))
-		assert.Equal(errInvalidEscape, err, "parse arg text should error on invalid escape")
+		assert.Equal(ErrInvalidEscape, err, "parse arg text should error on invalid escape")
 	}
 }

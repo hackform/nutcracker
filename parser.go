@@ -4,6 +4,12 @@ import (
 	"strings"
 )
 
+const (
+	argModeNorm = iota
+	argModeCmd
+	argModeSub
+)
+
 type (
 	Node interface {
 		Value() string
@@ -46,17 +52,23 @@ func (n nodeArg) Value() string {
 	return s.String()
 }
 
-func parseArg(text string) (*nodeArg, string, error) {
+func parseArg(text string, mode int) (*nodeArg, string, error) {
+	switch mode {
+	case argModeNorm, argModeCmd, argModeSub:
+	default:
+		return nil, "", ErrInvalidArgMode
+	}
+
 	nodes := []Node{}
 	i := 0
 	for i < len(text) {
 		ch := text[i]
 		if ch == '\\' {
 			if i+1 >= len(text) {
-				return nil, "", errInvalidEscape
+				return nil, "", ErrInvalidEscape
 			}
 			i += 2
-		} else if isSpace(ch) || ch == '"' || ch == '\'' {
+		} else if isSpace(ch) || ch == ')' || ch == '"' || ch == '\'' {
 			if i > 0 {
 				n, next, err := parseArgText(text, i)
 				if err != nil {
@@ -66,7 +78,12 @@ func parseArg(text string) (*nodeArg, string, error) {
 				text = next
 				i = 0
 			}
-			if isSpace(ch) {
+			if ch == ')' {
+				if mode == argModeNorm {
+					return nil, "", ErrInvalidCloseParen
+				}
+				break
+			} else if isSpace(ch) {
 				text = trimLSpace(text)
 				break
 			} else if ch == '"' {
@@ -88,6 +105,7 @@ func parseArg(text string) (*nodeArg, string, error) {
 			i++
 		}
 	}
+
 	if i > 0 {
 		n, next, err := parseArgText(text, i)
 		if err != nil {
@@ -97,6 +115,7 @@ func parseArg(text string) (*nodeArg, string, error) {
 		text = next
 		i = 0
 	}
+
 	return newNodeArg(nodes), text, nil
 }
 
@@ -136,7 +155,7 @@ func parseStrI(text string) (*nodeStrI, string, error) {
 		ch := text[i]
 		if ch == '\\' {
 			if i+1 >= len(text) {
-				return nil, "", errInvalidEscape
+				return nil, "", ErrInvalidEscape
 			}
 			i += 2
 		} else if ch == '"' {
@@ -154,7 +173,7 @@ func parseStrI(text string) (*nodeStrI, string, error) {
 			i++
 		}
 	}
-	return nil, "", errUnclosedStrI
+	return nil, "", ErrUnclosedStrI
 }
 
 type (
@@ -186,5 +205,5 @@ func parseStrL(text string) (*nodeStrL, string, error) {
 			i++
 		}
 	}
-	return nil, "", errUnclosedStrL
+	return nil, "", ErrUnclosedStrL
 }

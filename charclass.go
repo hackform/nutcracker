@@ -47,7 +47,7 @@ func unquoteArg(text string) (string, error) {
 		s.WriteString(text[0:k])
 		text = text[k+1:]
 		if len(text) < 1 {
-			return "", errInvalidEscape
+			return "", ErrInvalidEscape
 		}
 		ch := text[0]
 		if !isNewline(ch) {
@@ -71,7 +71,7 @@ func unquoteStrI(text string) (string, error) {
 		s.WriteString(text[0:k])
 		text = text[k+1:]
 		if len(text) < 1 {
-			return "", errInvalidEscape
+			return "", ErrInvalidEscape
 		}
 		ch := text[0]
 		if isNewline(ch) {

@@ -37,7 +37,7 @@ func Test_unquoteArg(t *testing.T) {
 	{
 		arg := `hello world\`
 		_, err := unquoteArg(arg)
-		assert.Equal(errInvalidEscape, err, "unquote should error on invalid escapes")
+		assert.Equal(ErrInvalidEscape, err, "unquote should error on invalid escapes")
 	}
 	{
 		arg := `hello\
@@ -60,7 +60,7 @@ func Test_unquoteStrI(t *testing.T) {
 	{
 		arg := `hello world\`
 		_, err := unquoteStrI(arg)
-		assert.Equal(errInvalidEscape, err, "unquote should error on invalid escapes")
+		assert.Equal(ErrInvalidEscape, err, "unquote should error on invalid escapes")
 	}
 	{
 		arg := `hello\
