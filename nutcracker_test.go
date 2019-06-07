@@ -1,6 +1,7 @@
 package nutcracker
 
 import (
+	"bytes"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -10,6 +11,7 @@ func Test_Parse(t *testing.T) {
 
 	exec := NewExecutor()
 	{
+		b := bytes.Buffer{}
 		arg := `echo $hello`
 		n, err := Parse(arg)
 		assert.NoError(err, "Parse should not error")
@@ -19,9 +21,10 @@ func Test_Parse(t *testing.T) {
 				return "world"
 			}
 			return ""
-		}, Ex: exec})
+		}, Ex: exec, Stdout: &b})
 		assert.NoError(err, "cmd should not error")
-		assert.Equal("world\n", v, "cmd output should be correct")
+		assert.Equal("", v, "cmd output should be correct")
+		assert.Equal("world\n", b.String(), "cmd stdout output should be correct")
 	}
 	{
 		arg := `echo $hello\`

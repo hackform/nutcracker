@@ -387,14 +387,16 @@ func (n nodeCmd) Value(env Env) (string, error) {
 		k = append(k, v)
 	}
 	b := bytes.Buffer{}
-	env.Stdout = &b
+	if !n.top {
+		env.Stdout = &b
+	}
 	if err := env.Ex.Exec(k, env); err != nil {
 		return "", err
 	}
-	if n.top {
-		return b.String(), nil
+	if !n.top {
+		return parseTextNodes(b.String()), nil
 	}
-	return parseTextNodes(b.String()), nil
+	return "", nil
 }
 
 func parseTextNodes(text string) string {

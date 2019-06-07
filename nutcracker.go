@@ -1,6 +1,12 @@
 package nutcracker
 
-func Parse(shellcmd string) (Node, error) {
+type (
+	Cmd struct {
+		node Node
+	}
+)
+
+func Parse(shellcmd string) (*Cmd, error) {
 	args := []Node{}
 	text := trimLSpace(shellcmd)
 	for len(text) > 0 {
@@ -11,5 +17,12 @@ func Parse(shellcmd string) (Node, error) {
 		args = append(args, n)
 		text = next
 	}
-	return newNodeCmd(args, true), nil
+	return &Cmd{
+		node: newNodeCmd(args, true),
+	}, nil
+}
+
+func (c Cmd) Exec(env Env) error {
+	_, err := c.node.Value(env)
+	return err
 }
