@@ -22,8 +22,8 @@ func trimLSpace(s string) string {
 	return strings.TrimLeft(s, spaceCharSet)
 }
 
-func trimLRSpace(s string) string {
-	return strings.Trim(s, spaceCharSet)
+func nextSpace(s string) int {
+	return strings.IndexAny(s, spaceCharSet)
 }
 
 func isSpecialStrI(c byte) bool {

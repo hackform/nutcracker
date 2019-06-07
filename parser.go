@@ -397,8 +397,21 @@ func (n nodeCmd) Value(env Env) (string, error) {
 	if n.top {
 		return b.String(), nil
 	}
-	// TODO split by whitespace
-	return trimLRSpace(b.String()), nil
+	return parseTextNodes(b.String()), nil
+}
+
+func parseTextNodes(text string) string {
+	nodes := []string{}
+	text = trimLSpace(text)
+	for len(text) > 0 {
+		k := nextSpace(text)
+		if k < 0 {
+			k = 0
+		}
+		nodes = append(nodes, text[0:k])
+		text = trimLSpace(text[k:])
+	}
+	return strings.Join(nodes, " ")
 }
 
 // parseCmd parses a command substitution.

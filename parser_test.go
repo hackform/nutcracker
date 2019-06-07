@@ -151,6 +151,16 @@ func Test_parseArg(t *testing.T) {
 		assert.Equal("hellokevin", v, "value returns correct arg value")
 	}
 	{
+		arg := `$(echo "hello   world")kevin`
+		n, next, err := parseArg(arg, argModeNorm)
+		assert.NoError(err, "parse arg should not error")
+		assert.Equal("", next, "all variables should be consumed")
+		assert.Equal(newNodeArg([]Node{newNodeCmd([]Node{newNodeArg([]Node{newNodeText("echo")}), newNodeArg([]Node{newNodeStrI([]Node{newNodeText("hello   world")})})}, false), newNodeText("kevin")}), n, "command substitution is parsed")
+		v, err := n.Value(Env{})
+		assert.NoError(err, "node value should not error")
+		assert.Equal("hello worldkevin", v, "value returns correct arg value")
+	}
+	{
 		arg := `$()kevin`
 		n, next, err := parseArg(arg, argModeNorm)
 		assert.NoError(err, "parse arg should not error")
