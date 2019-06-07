@@ -1,6 +1,8 @@
 package nutcracker
 
 import (
+	"bytes"
+	"io"
 	"strings"
 )
 
@@ -11,8 +13,18 @@ const (
 )
 
 type (
+	EnvFunc func(string) string
+
+	Env struct {
+		Envvar  []string
+		Envfunc EnvFunc
+		Stdin   io.Reader
+		Stdout  io.Writer
+		Stderr  io.Writer
+	}
+
 	Node interface {
-		Value() string
+		Value(env Env) (string, error)
 	}
 )
 
@@ -28,8 +40,8 @@ func newNodeText(text string) *nodeText {
 	}
 }
 
-func (n nodeText) Value() string {
-	return n.text
+func (n nodeText) Value(env Env) (string, error) {
+	return n.text, nil
 }
 
 type (
@@ -44,12 +56,16 @@ func newNodeArg(nodes []Node) *nodeArg {
 	}
 }
 
-func (n nodeArg) Value() string {
+func (n nodeArg) Value(env Env) (string, error) {
 	s := strings.Builder{}
 	for _, i := range n.nodes {
-		s.WriteString(i.Value())
+		v, err := i.Value(env)
+		if err != nil {
+			return "", err
+		}
+		s.WriteString(v)
 	}
-	return s.String()
+	return s.String(), nil
 }
 
 func parseArg(text string, mode int) (*nodeArg, string, error) {
@@ -139,12 +155,16 @@ func newNodeStrI(nodes []Node) *nodeStrI {
 	}
 }
 
-func (n nodeStrI) Value() string {
+func (n nodeStrI) Value(env Env) (string, error) {
 	s := strings.Builder{}
 	for _, i := range n.nodes {
-		s.WriteString(i.Value())
+		v, err := i.Value(env)
+		if err != nil {
+			return "", err
+		}
+		s.WriteString(v)
 	}
-	return s.String()
+	return s.String(), nil
 }
 
 func parseStrI(text string) (*nodeStrI, string, error) {
@@ -188,8 +208,8 @@ func newNodeStrL(s string) *nodeStrL {
 	}
 }
 
-func (n nodeStrL) Value() string {
-	return n.text
+func (n nodeStrL) Value(env Env) (string, error) {
+	return n.text, nil
 }
 
 func parseStrL(text string) (*nodeStrL, string, error) {
@@ -206,4 +226,59 @@ func parseStrL(text string) (*nodeStrL, string, error) {
 		}
 	}
 	return nil, "", ErrUnclosedStrL
+}
+
+type (
+	nodeEnvVar struct {
+		name   string
+		defval string
+	}
+)
+
+func newNodeEnvVar(name, defval string) *nodeEnvVar {
+	return &nodeEnvVar{
+		name:   name,
+		defval: defval,
+	}
+}
+
+func (n nodeEnvVar) Value(env Env) (string, error) {
+	k := env.Envfunc(n.name)
+	if len(k) == 0 {
+		return n.defval, nil
+	}
+	return k, nil
+}
+
+type (
+	nodeCmd struct {
+		nodes []Node
+	}
+)
+
+func newNodeCmd(nodes []Node) *nodeCmd {
+	return &nodeCmd{
+		nodes: nodes,
+	}
+}
+
+func (n nodeCmd) Value(env Env) (string, error) {
+	k := make([]string, 0, len(n.nodes))
+	for _, i := range n.nodes {
+		v, err := i.Value(env)
+		if err != nil {
+			return "", err
+		}
+		k = append(k, v)
+	}
+	b := bytes.Buffer{}
+	env.Stdout = &b
+	ex, err := newExecutor(k, env)
+	if err != nil {
+		return "", err
+	}
+	if err := ex.Exec(); err != nil {
+		return "", err
+	}
+	return b.String(), nil
 }
