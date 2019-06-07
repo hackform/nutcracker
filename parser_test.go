@@ -75,6 +75,11 @@ func Test_parseArg(t *testing.T) {
 	}
 	{
 		arg := `hello\ world\`
+		_, _, err := parseArg(arg, -1)
+		assert.Equal(ErrInvalidArgMode, err, "parse arg should error on invalid mode")
+	}
+	{
+		arg := `hello\ world\`
 		_, _, err := parseArg(arg, argModeNorm)
 		assert.Equal(ErrInvalidEscape, err, "parse arg should error on invalid escape")
 	}
@@ -82,6 +87,11 @@ func Test_parseArg(t *testing.T) {
 		arg := `"hello\$ world\`
 		_, _, err := parseArg(arg, argModeNorm)
 		assert.Equal(ErrInvalidEscape, err, "parse arg should error on invalid escape")
+	}
+	{
+		arg := `hello) world`
+		_, _, err := parseArg(arg, argModeNorm)
+		assert.Equal(ErrInvalidCloseParen, err, "parse arg should error on invalid mode")
 	}
 	{
 		arg := `'hello\$ world\`
