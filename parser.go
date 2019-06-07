@@ -362,12 +362,14 @@ func parseVarLong(text string) (Node, string, error) {
 type (
 	nodeCmd struct {
 		nodes []Node
+		top   bool
 	}
 )
 
-func newNodeCmd(nodes []Node) *nodeCmd {
+func newNodeCmd(nodes []Node, top bool) *nodeCmd {
 	return &nodeCmd{
 		nodes: nodes,
+		top:   top,
 	}
 }
 
@@ -392,6 +394,10 @@ func (n nodeCmd) Value(env Env) (string, error) {
 	if err := ex.Exec(); err != nil {
 		return "", err
 	}
+	if n.top {
+		return b.String(), nil
+	}
+	// TODO split by whitespace
 	return trimLRSpace(b.String()), nil
 }
 
@@ -404,7 +410,7 @@ func parseCmd(text string) (Node, string, error) {
 		ch := text[0]
 		if ch == ')' {
 			text = text[1:]
-			return newNodeCmd(nodes), text, nil
+			return newNodeCmd(nodes, false), text, nil
 		}
 		n, next, err := parseArg(text, argModeCmd)
 		if err != nil {

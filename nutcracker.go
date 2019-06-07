@@ -1,23 +1,15 @@
 package nutcracker
 
-type (
-	token struct {
-		id  int
-		val string
-	}
-
-	matcher func(string) ([]token, string, error)
-)
-
-func tokenize(directive string) ([]*nodeArg, error) {
-	args := []*nodeArg{}
-	for text := trimLSpace(directive); len(text) > 0; text = trimLSpace(text) {
-		t, next, err := parseArg(text, argModeNorm)
+func Parse(shellcmd string) (Node, error) {
+	args := []Node{}
+	text := trimLSpace(shellcmd)
+	for len(text) > 0 {
+		n, next, err := parseArg(text, argModeNorm)
 		if err != nil {
 			return nil, err
 		}
-		args = append(args, t)
+		args = append(args, n)
 		text = next
 	}
-	return args, nil
+	return newNodeCmd(args, true), nil
 }
