@@ -25,6 +25,16 @@ func Test_trimLSpace(t *testing.T) {
 	}
 }
 
+func Test_trimLRSpace(t *testing.T) {
+	assert := assert.New(t)
+
+	{
+		arg := "\t\r\n hello \t\n\r "
+		s := trimLRSpace(arg)
+		assert.Equal("hello", s, "spaces should be removed from the left and right of the string")
+	}
+}
+
 func Test_unquoteArg(t *testing.T) {
 	assert := assert.New(t)
 

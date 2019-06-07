@@ -29,5 +29,5 @@ func newExecutor(args []string, env Env) (Executor, error) {
 }
 
 func (e *executor) Exec() error {
-	return nil
+	return e.cmd.Run()
 }

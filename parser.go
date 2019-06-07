@@ -392,11 +392,26 @@ func (n nodeCmd) Value(env Env) (string, error) {
 	if err := ex.Exec(); err != nil {
 		return "", err
 	}
-	return b.String(), nil
+	return trimLRSpace(b.String()), nil
 }
 
 // parseCmd parses a command substitution.
 // takes in a string beginning with '$('
 func parseCmd(text string) (Node, string, error) {
+	text = trimLSpace(text[2:])
+	nodes := []Node{}
+	for len(text) > 0 {
+		ch := text[0]
+		if ch == ')' {
+			text = text[1:]
+			return newNodeCmd(nodes), text, nil
+		}
+		n, next, err := parseArg(text, argModeCmd)
+		if err != nil {
+			return nil, "", err
+		}
+		nodes = append(nodes, n)
+		text = next
+	}
 	return nil, "", ErrUnclosedParen
 }
