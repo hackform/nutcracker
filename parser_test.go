@@ -8,6 +8,7 @@ import (
 func Test_parseArg(t *testing.T) {
 	assert := assert.New(t)
 
+	exec := newExecutor()
 	{
 		arg := `hello world `
 		n, next, err := parseArg(arg, argModeNorm)
@@ -146,17 +147,17 @@ func Test_parseArg(t *testing.T) {
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("", next, "all variables should be consumed")
 		assert.Equal(newNodeArg([]Node{newNodeCmd([]Node{newNodeArg([]Node{newNodeText("echo")}), newNodeArg([]Node{newNodeText("hello")})}, false), newNodeText("kevin")}), n, "command substitution is parsed")
-		v, err := n.Value(Env{})
+		v, err := n.Value(Env{Ex: exec})
 		assert.NoError(err, "node value should not error")
 		assert.Equal("hellokevin", v, "value returns correct arg value")
 	}
 	{
-		arg := `$(echo "hello   world")kevin`
+		arg := `$(echo -n "hello   world")kevin`
 		n, next, err := parseArg(arg, argModeNorm)
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("", next, "all variables should be consumed")
-		assert.Equal(newNodeArg([]Node{newNodeCmd([]Node{newNodeArg([]Node{newNodeText("echo")}), newNodeArg([]Node{newNodeStrI([]Node{newNodeText("hello   world")})})}, false), newNodeText("kevin")}), n, "command substitution is parsed")
-		v, err := n.Value(Env{})
+		assert.Equal(newNodeArg([]Node{newNodeCmd([]Node{newNodeArg([]Node{newNodeText("echo")}), newNodeArg([]Node{newNodeText("-n")}), newNodeArg([]Node{newNodeStrI([]Node{newNodeText("hello   world")})})}, false), newNodeText("kevin")}), n, "command substitution is parsed")
+		v, err := n.Value(Env{Ex: exec})
 		assert.NoError(err, "node value should not error")
 		assert.Equal("hello worldkevin", v, "value returns correct arg value")
 	}
@@ -166,7 +167,7 @@ func Test_parseArg(t *testing.T) {
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("", next, "all variables should be consumed")
 		assert.Equal(newNodeArg([]Node{newNodeCmd([]Node{}, false), newNodeText("kevin")}), n, "empty command substitution is parsed")
-		v, err := n.Value(Env{})
+		v, err := n.Value(Env{Ex: exec})
 		assert.NoError(err, "node value should not error")
 		assert.Equal("kevin", v, "value returns correct arg value")
 	}
@@ -176,7 +177,7 @@ func Test_parseArg(t *testing.T) {
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("", next, "all variables should be consumed")
 		assert.Equal(newNodeArg([]Node{newNodeStrI([]Node{newNodeCmd([]Node{newNodeArg([]Node{newNodeText("bogus")}), newNodeArg([]Node{newNodeText("hello")})}, false)}), newNodeText("kevin")}), n, "command substitution is parsed")
-		_, err = n.Value(Env{})
+		_, err = n.Value(Env{Ex: exec})
 		assert.Error(err, "node value should error on invalid command")
 	}
 	{
@@ -185,7 +186,7 @@ func Test_parseArg(t *testing.T) {
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("", next, "all variables should be consumed")
 		assert.Equal(newNodeArg([]Node{newNodeEnvVar("world", []Node{newNodeArg([]Node{newNodeCmd([]Node{newNodeArg([]Node{newNodeText("bogus")}), newNodeArg([]Node{newNodeText("hello")})}, false)})}), newNodeText("kevin")}), n, "command substitution is parsed")
-		_, err = n.Value(Env{})
+		_, err = n.Value(Env{Ex: exec})
 		assert.Error(err, "node value should error on invalid command")
 	}
 	{
@@ -194,13 +195,18 @@ func Test_parseArg(t *testing.T) {
 		assert.NoError(err, "parse arg should not error")
 		assert.Equal("", next, "all variables should be consumed")
 		assert.Equal(newNodeArg([]Node{newNodeCmd([]Node{newNodeArg([]Node{newNodeText("bogus")}), newNodeArg([]Node{newNodeCmd([]Node{newNodeArg([]Node{newNodeText("bogus")}), newNodeArg([]Node{newNodeText("hello")})}, false)})}, false), newNodeText("kevin")}), n, "command substitution is parsed")
-		_, err = n.Value(Env{})
+		_, err = n.Value(Env{Ex: exec})
 		assert.Error(err, "node value should error on invalid command")
 	}
 	{
 		arg := `$(bogus `
 		_, _, err := parseArg(arg, argModeNorm)
 		assert.Equal(ErrUnclosedParen, err, "parse arg should not error")
+	}
+	{
+		arg := `$(bogus \`
+		_, _, err := parseArg(arg, argModeNorm)
+		assert.Equal(ErrInvalidEscape, err, "parse arg should not error")
 	}
 	{
 		arg := `hello\ world\`

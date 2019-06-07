@@ -5,11 +5,12 @@ import (
 	"testing"
 )
 
-func Test_newExecutor(t *testing.T) {
+func Test_Executor_Exec(t *testing.T) {
 	assert := assert.New(t)
 
 	{
-		_, err := newExecutor([]string{}, Env{})
-		assert.Equal(ErrInvalidExec, err, "executor must be initialized with a command")
+		exec := newExecutor()
+		err := exec.Exec([]string{}, Env{})
+		assert.Equal(ErrInvalidExec, err, "executor must be run with a command")
 	}
 }

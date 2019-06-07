@@ -8,6 +8,7 @@ import (
 func Test_Parse(t *testing.T) {
 	assert := assert.New(t)
 
+	exec := newExecutor()
 	{
 		arg := `echo $hello`
 		n, err := Parse(arg)
@@ -18,7 +19,7 @@ func Test_Parse(t *testing.T) {
 				return "world"
 			}
 			return ""
-		}})
+		}, Ex: exec})
 		assert.NoError(err, "cmd should not error")
 		assert.Equal("world\n", v, "cmd output should be correct")
 	}

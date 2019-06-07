@@ -22,6 +22,7 @@ type (
 		Stdin   io.Reader
 		Stdout  io.Writer
 		Stderr  io.Writer
+		Ex      Executor
 	}
 
 	Node interface {
@@ -387,11 +388,7 @@ func (n nodeCmd) Value(env Env) (string, error) {
 	}
 	b := bytes.Buffer{}
 	env.Stdout = &b
-	ex, err := newExecutor(k, env)
-	if err != nil {
-		return "", err
-	}
-	if err := ex.Exec(); err != nil {
+	if err := env.Ex.Exec(k, env); err != nil {
 		return "", err
 	}
 	if n.top {
@@ -406,7 +403,7 @@ func parseTextNodes(text string) string {
 	for len(text) > 0 {
 		k := nextSpace(text)
 		if k < 0 {
-			k = 0
+			k = len(text)
 		}
 		nodes = append(nodes, text[0:k])
 		text = trimLSpace(text[k:])
