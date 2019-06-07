@@ -8,7 +8,7 @@ import (
 func Test_Parse(t *testing.T) {
 	assert := assert.New(t)
 
-	exec := newExecutor()
+	exec := NewExecutor()
 	{
 		arg := `echo $hello`
 		n, err := Parse(arg)

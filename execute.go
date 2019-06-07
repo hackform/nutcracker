@@ -13,7 +13,7 @@ type (
 	}
 )
 
-func newExecutor() Executor {
+func NewExecutor() Executor {
 	return &executor{}
 }
 
