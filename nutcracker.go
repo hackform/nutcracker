@@ -2,7 +2,7 @@ package nutcracker
 
 type (
 	Cmd struct {
-		node Node
+		args []Node
 	}
 )
 
@@ -18,11 +18,24 @@ func Parse(shellcmd string) (*Cmd, error) {
 		text = next
 	}
 	return &Cmd{
-		node: newNodeCmd(args, true),
+		args: args,
 	}, nil
 }
 
 func (c Cmd) Exec(env Env) error {
-	_, err := c.node.Value(env)
-	return err
+	if len(c.args) == 0 {
+		return nil
+	}
+	k := make([]string, 0, len(c.args))
+	for _, i := range c.args {
+		v, err := i.Value(env)
+		if err != nil {
+			return err
+		}
+		k = append(k, v)
+	}
+	if err := env.Ex.Exec(k, env); err != nil {
+		return err
+	}
+	return nil
 }

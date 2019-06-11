@@ -55,7 +55,7 @@ func Test_unquoteStrI(t *testing.T) {
 		arg := `hello\ world\$\"\\ `
 		s, err := unquoteStrI(arg)
 		assert.NoError(err, "unquote should not error")
-		assert.Equal("hello\\ world$\"\\ ", s, "unquote should only be removed if before a special char")
+		assert.Equal("hello\\ world$\"\\ ", s, "escape should only be removed if before a special char")
 	}
 	{
 		arg := `hello world\`

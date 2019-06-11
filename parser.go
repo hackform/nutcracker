@@ -363,14 +363,12 @@ func parseVarLong(text string) (Node, string, error) {
 type (
 	nodeCmd struct {
 		nodes []Node
-		top   bool
 	}
 )
 
-func newNodeCmd(nodes []Node, top bool) *nodeCmd {
+func newNodeCmd(nodes []Node) *nodeCmd {
 	return &nodeCmd{
 		nodes: nodes,
-		top:   top,
 	}
 }
 
@@ -387,16 +385,11 @@ func (n nodeCmd) Value(env Env) (string, error) {
 		k = append(k, v)
 	}
 	b := bytes.Buffer{}
-	if !n.top {
-		env.Stdout = &b
-	}
+	env.Stdout = &b
 	if err := env.Ex.Exec(k, env); err != nil {
 		return "", err
 	}
-	if !n.top {
-		return parseTextNodes(b.String()), nil
-	}
-	return "", nil
+	return parseTextNodes(b.String()), nil
 }
 
 func parseTextNodes(text string) string {
@@ -422,7 +415,7 @@ func parseCmd(text string) (Node, string, error) {
 		ch := text[0]
 		if ch == ')' {
 			text = text[1:]
-			return newNodeCmd(nodes, false), text, nil
+			return newNodeCmd(nodes), text, nil
 		}
 		n, next, err := parseArg(text, argModeCmd)
 		if err != nil {
